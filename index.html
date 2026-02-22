@@ -66,18 +66,16 @@
       opacity: 0.5;
       filter: hue-rotate(180deg) brightness(1.2);
       animation: fishSwim linear infinite;
-    }
-    
-    .fish.reverse {
+      /* Рыбы всегда плывут носом вперед (слева направо) */
       transform: scaleX(1);
     }
     
     @keyframes fishSwim {
       0% {
-        transform: translateX(-100px);
+        transform: translateX(-100px) scaleX(1);
       }
       100% {
-        transform: translateX(calc(100vw + 100px));
+        transform: translateX(calc(100vw + 100px)) scaleX(1);
       }
     }
     
@@ -134,10 +132,10 @@
       box-shadow: 0 0 10px #00ffff;
     }
     
-    /* СЛОВО - ПО ЦЕНТРУ ВВЕРХУ */
-    ##word-display {
+    /* СЛОВО - ПО ЦЕНТРУ ВНИЗУ */
+    #word-display {
       position: absolute;
-      bottom: 80px;  /* Можно регулировать значение */
+      bottom: 80px;  /* Сдвинуто вниз, чтобы не перекрываться с HUD */
       left: 50%;
       transform: translateX(-50%);
       font-size: 3.5vw;
@@ -449,7 +447,7 @@
         font-size: 8vw;
         letter-spacing: 8px;
         padding: 10px 15px;
-        top: 15px;
+        bottom: 40px; /* Адаптация для мобильных */
         white-space: normal;
         word-break: break-word;
       }
@@ -641,7 +639,7 @@
   const HINT_DELAY = 8000;
   const BASE_FLY_SPEED = 1.5;
   const LEVEL_SPEED_MULTIPLIER = 1.3;
-  const CORRECT_FLY_RATIO = 0.6;
+  const CORRECT_FLY_RATIO = 0.6; // Соотношение правильных мух ко всем
   const LETTER_OFFSET = 15; // Смещение буквы на мухе
 
   // СОЗДАНИЕ ПОДВОДНОЙ АНИМАЦИИ
@@ -666,7 +664,7 @@
       setTimeout(() => {
         const fish = document.createElement('div');
         fish.className = 'fish';
-        if (Math.random() > 0.5) fish.classList.add('reverse');
+        // Убираем класс reverse, рыбы всегда плывут носом вперед
         fish.style.top = `${10 + Math.random() * 70}%`;
         fish.style.animationDuration = `${25 + Math.random() * 20}s`;
         fish.style.animationDelay = `${Math.random() * -20}s`;
@@ -871,7 +869,7 @@
     let letterIndex = 0;
     for (let i = 0; i < wordObj.word.length; i++) {
       if(wordObj.word[i] === '.') {
-        result += `<span class="highlighted_letter">${inserts[letterIndex]}</span>`;
+        result += `<span style="color: #00FF00; text-shadow: 2px 2px 0 #000000, -1px -1px 0 #000000, 1px -1px 0 #000000, -1px 1px 0 #000000, 1px 1px 0 #000000; font-weight: bold;">${inserts[letterIndex]}</span>`;
         letterIndex++;
       } else {
         result += wordObj.word[i];
@@ -904,34 +902,72 @@
     const wordObj = getCurrentWord();
     const maxFlies = isMobile() ? maxFliesMobile : Math.max(8, wordObj.correct.length * 4);
     
+    // Какие буквы еще нужно вставить
     const correctLettersNeeded = wordObj.correct.filter((letter, index) => !currentInserts[index]);
     
-    // СОЗДАЕМ ПРАВИЛЬНЫЕ МУХИ
-    correctLettersNeeded.forEach(letter => {
-      const correctFliesCount = Math.max(2, Math.floor(maxFlies * CORRECT_FLY_RATIO / correctLettersNeeded.length));
-      
-      for(let i = 0; i < correctFliesCount; i++) {
-        createFly(letter, true);
+    // Если все буквы уже вставлены, не спавним мух
+    if (correctLettersNeeded.length === 0) return;
+
+    // Определяем множество правильных букв для этого слова (для разнообразия)
+    const correctLettersSet = new Set(wordObj.correct);
+    
+    // Создаем пул возможных букв для мух (правильные + их пары)
+    const possibleLetters = new Set();
+    correctLettersSet.forEach(letter => {
+      possibleLetters.add(letter);
+      if (vowelPairs[letter]) {
+        possibleLetters.add(vowelPairs[letter]);
       }
     });
     
-    // СОЗДАЕМ НЕПРАВИЛЬНЫЕ МУХИ (разные варианты)
-    const remainingFlies = maxFlies - document.querySelectorAll('.fly').length;
-    for(let i = 0; i < remainingFlies; i++) {
-      // Берем случайную правильную букву и делаем её неправильную пару
-      const randomCorrect = wordObj.correct[Math.floor(Math.random() * wordObj.correct.length)];
+    // Убедимся, что в пуле есть буквы 'а', 'о', 'и', 'е' в зависимости от слова
+    // Принудительно добавляем эти буквы, если их нет, для выполнения условия задачи
+    const targetLetters = ['а', 'о', 'и', 'е'];
+    targetLetters.forEach(l => possibleLetters.add(l));
+    
+    // Преобразуем пул в массив для удобства
+    const lettersPool = Array.from(possibleLetters);
+    
+    // Спавним мух
+    for (let i = 0; i < maxFlies; i++) {
+      // Решаем, будет ли муха правильной
+      const isCorrect = Math.random() < CORRECT_FLY_RATIO;
       
-      // Иногда используем другую правильную букву как неправильную
-      let falseLetter;
-      if (Math.random() > 0.3) {
-        falseLetter = vowelPairs[randomCorrect] || 'а';
+      let letter;
+      if (isCorrect) {
+        // Выбираем случайную правильную букву из тех, что еще нужны
+        // Но чтобы не было только правильных букв, иногда берем любую правильную из слова
+        if (correctLettersNeeded.length > 0 && Math.random() > 0.3) {
+          letter = correctLettersNeeded[Math.floor(Math.random() * correctLettersNeeded.length)];
+        } else {
+          // Берем любую правильную букву из слова (уже вставленную или нет)
+          letter = wordObj.correct[Math.floor(Math.random() * wordObj.correct.length)];
+        }
       } else {
-        // Иногда используем другую правильную букву (чтобы было больше разнообразия)
-        const otherCorrect = wordObj.correct.filter(l => l !== randomCorrect);
-        falseLetter = otherCorrect.length > 0 ? otherCorrect[0] : vowelPairs[randomCorrect] || 'о';
+        // Выбираем неправильную букву
+        // Неправильная буква не должна входить в множество правильных для этого слова
+        do {
+          letter = lettersPool[Math.floor(Math.random() * lettersPool.length)];
+        } while (correctLettersSet.has(letter) && lettersPool.length > 1); // Избегаем правильных, если есть альтернативы
+        
+        // Если получилось так, что выпала правильная (например, в пуле только правильные), меняем на её пару
+        if (correctLettersSet.has(letter) && vowelPairs[letter]) {
+          letter = vowelPairs[letter];
+        }
       }
       
-      createFly(falseLetter, false);
+      // Окончательная проверка: для текущего слова letter не должна быть правильной, если мы хотим неправильную муху
+      if (!isCorrect && correctLettersSet.has(letter)) {
+        // Пытаемся найти пару
+        if (vowelPairs[letter]) {
+          letter = vowelPairs[letter];
+        } else {
+          // Если пары нет, пропускаем эту итерацию (или берем другую букву)
+          continue;
+        }
+      }
+      
+      createFly(letter, isCorrect && correctLettersSet.has(letter)); // Муха правильная только если буква из correct
     }
     
     lastActionTime = Date.now();
