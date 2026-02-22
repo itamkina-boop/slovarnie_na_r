@@ -69,7 +69,7 @@
     }
     
     .fish.reverse {
-      transform: scaleX(-1);
+      transform: scaleX(1);
     }
     
     @keyframes fishSwim {
@@ -996,9 +996,9 @@
   }
 
   function startHintTimer() {
-    if (hintTimeout) clearTimeout(hintTimeout);
-    hintTimeout = setTimeout(showHint, HINT_DELAY);
-  }
+  if (hintTimeout) clearTimeout(hintTimeout);
+  // hintTimeout = setTimeout(showHint, HINT_DELAY); // Подсказки отключены
+}
 
   function resetHint() {
     if (hintTimeout) {
