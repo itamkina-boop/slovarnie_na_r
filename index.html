@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Словарный Прицел</title>
+  <style>
+    body, html {
+      margin: 0; padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #fdeec2;
+    }
+    #game-area {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: url('background_autumn_park.png') no-repeat center center / cover;
+      user-select: none;
+    }
+    #word-display {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 3vw;
+      font-weight: bold;
+      color: black;
+      text-shadow: 1px 1px 2px white;
+      letter-spacing: 12px;
+      user-select: none;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px 20px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+    #hud {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    #score {
+      font-size: 2vw;
+      color: black;
+    }
+    #level {
+      font-size: 1.5vw;
+      color: #8B4513;
+    }
+    #lives {
+      display: flex;
+      gap: 6px;
+    }
+    .life {
+      width: 30px;
+      height: 30px;
+      background: url('acorn_life.png') no-repeat center center / contain;
+      user-select: none;
+    }
+    #encouragement-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 5vw;
+      color: #FF6B00;
+      text-shadow:
+         -2px -2px 0 white,
+          2px -2px 0 white,
+         -2px  2px 0 white,
+          2px  2px 0 white;
+      font-weight: bold;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 1500;
+      animation: encouragementPulse 1.5s ease-in-out;
+    }
+    @keyframes encouragementPulse {
+      0%, 100% {transform: translate(-50%, -50%) scale(1); opacity: 1;}
+      25% {transform: translate(-50%, -50%) scale(1.3); opacity: 1;}
+      50% {transform: translate(-50%, -50%) scale(1.1); opacity: 1;}
+      75% {transform: translate(-50%, -50%) scale(1.2); opacity: 1;}
+    }
+    #miss-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 6vw;
+      color: limegreen;
+      text-shadow:
+         -1px -1px 0 white,
+          1px -1px 0 white,
+         -1px  1px 0 white,
+          1px  1px 0 white;
+      font-weight: bold;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      z-index: 1500;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% {transform: translate(-50%, -50%) scale(1);}
+      50% {transform: translate(-50%, -50%) scale(1.1);}
+    }
+    .fly {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+      user-select: none;
+      font-weight: bold;
+      font-size: 36px;
+      color: black;
+      text-shadow:
+         -1px -1px 0 white,
+          1px -1px 0 white,
+         -1px  1px 0 white,
+          1px  1px 0 white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: url('fly_with_letter.png') no-repeat center center / contain;
+      user-select: none;
+      z-index: 800;
+      transition: transform 0.2s ease;
+    }
+    .fly:hover {
+      transform: scale(1.1);
+    }
+    .fly.hint {
+      animation: hintBlink 1s ease-in-out infinite;
+    }
+    @keyframes hintBlink {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.5) drop-shadow(0 0 10px yellow); }
+    }
+    .highlighted_letter {
+      color: red !important;
+      text-shadow:
+         -1px -1px 0 white,
+          1px -1px 0 white,
+         -1px  1px 0 white,
+          1px  1px 0 white;
+      transition: transform 0.3s ease;
+      transform-origin: center;
+    }
+    .highlight-anim {
+      animation: highlightGrow 0.4s ease forwards;
+    }
+    @keyframes highlightGrow {
+      0% {transform: scale(1);}
+      50% {transform: scale(1.15);}
+      100% {transform: scale(1);}
+    }
+    #crosshair {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      pointer-events: none;
+      background: url('crosshair_red.png') no-repeat center center / contain;
+      z-index: 1200;
+    }
+    #game-over-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      user-select: none;
+    }
+    #game-over-text {
+      font-size: 4vw;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    #final-score {
+      font-size: 3vw;
+      margin-bottom: 20px;
+    }
+    #game-over-buttons {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .game-over-button {
+      font-size: 2vw;
+      padding: 15px 30px;
+      cursor: pointer;
+      border-radius: 10px;
+      border: none;
+      color: white;
+      font-weight: bold;
+    }
+    #restart-button {
+      background-color: #FF6B00;
+    }
+    #dictionary-button {
+      background-color: #4CAF50;
+    }
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      gap: 15px;
+      z-index: 1600;
+    }
+    button {
+      font-size: 1.5vw;
+      padding: 8px 15px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      background-color: #a56a00;
+      color: white;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-icon {
+      width: 24px;
+      height: 24px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    #btn-pause .btn-icon {
+      background-image: url('button_pause.png');
+    }
+    #btn-dict .btn-icon {
+      background-image: url('button_dictionary.png');
+    }
+
+    /* АНИМАЦИИ ДЛЯ ПЕРЕХОДА НА УРОВЕНЬ */
+    @keyframes fireworkParticle {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+      50% { transform: translate(calc(-50% + var(--end-x)), calc(-50% + var(--end-y))) scale(1); opacity: 1; }
+      100% { transform: translate(calc(-50% + var(--end-x)), calc(-50% + var(--end-y))) scale(0); opacity: 0; }
+    }
+
+    @keyframes levelUpEnter {
+      0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+      70% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes levelUpExit {
+      0% { transform: scale(1) rotate(0deg); opacity: 1; }
+      30% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+      100% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+
+    /* МОБИЛЬНАЯ ВЕРСИЯ */
+    @media (max-width: 768px) {
+      #word-display { 
+        font-size: 10vw; 
+        letter-spacing: 5px; 
+        padding: 8px 15px;
+        top: 10px;
+      }
+      .fly {
+        width: 80px;
+        height: 80px;
+        font-size: 48px;
+      }
+      .life {
+        width: 40px;
+        height: 40px;
+      }
+      #crosshair {
+        width: 70px;
+        height: 70px;
+      }
+      
+      /* ПЕРЕМЕЩЕНИЕ КНОПОК ВНИЗ ДЛЯ МОБИЛЬНОЙ ВЕРСИИ */
+      #controls {
+        position: fixed;
+        top: auto;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        width: 90%;
+        max-width: 400px;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 15px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
+      
+      button {
+        font-size: 4.5vw;
+        padding: 12px 20px;
+        flex: 1;
+        justify-content: center;
+        min-height: 50px;
+        border-radius: 10px;
+        font-weight: bold;
+      }
+      
+      .btn-icon {
+        width: 30px;
+        height: 30px;
+      }
+      
+      /* АДАПТАЦИЯ HUD ДЛЯ МОБИЛЬНОЙ ВЕРСИИ */
+      #hud {
+        top: 10px;
+        right: 10px;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px 12px;
+      }
+      
+      #score {
+        font-size: 5vw;
+        order: 3;
+      }
+      
+      #level {
+        font-size: 4vw;
+        order: 1;
+      }
+      
+      #lives {
+        order: 2;
+        gap: 4px;
+      }
+      
+      #encouragement-message {
+        font-size: 8vw;
+      }
+      
+      #game-over-text {
+        font-size: 6vw;
+      }
+      
+      #final-score {
+        font-size: 5vw;
+      }
+      
+      .game-over-button {
+        font-size: 4vw;
+        padding: 12px 20px;
+      }
+      
+      #game-over-buttons {
+        flex-direction: column;
+        gap: 10px;
+        width: 80%;
+      }
+    }
+
+    /* ДОПОЛНИТЕЛЬНЫЕ ПРАВКИ ДЛЯ ОЧЕНЬ МАЛЕНЬКИХ ЭКРАНОВ */
+    @media (max-width: 480px) {
+      #controls {
+        bottom: 15px;
+        padding: 12px;
+        gap: 15px;
+      }
+      
+      button {
+        font-size: 5vw;
+        padding: 10px 15px;
+        min-height: 45px;
+      }
+      
+      #hud {
+        padding: 6px 10px;
+      }
+      
+      #word-display {
+        top: 5px;
+        padding: 6px 12px;
+      }
+    }
+
+    /* ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ НА МОБИЛЬНЫХ */
+    @media (max-height: 500px) and (max-width: 1000px) {
+      #controls {
+        bottom: 10px;
+        padding: 10px;
+      }
+      
+      button {
+        font-size: 4vw;
+        padding: 8px 12px;
+        min-height: 40px;
+      }
+      
+      #word-display {
+        font-size: 8vw;
+        top: 5px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-area" tabindex="0">
+  <div id="word-display"></div>
+  <div id="hud">
+    <div id="level">Уровень: 1</div>
+    <div id="lives"></div>
+    <div id="score">0</div>
+  </div>
+  <div id="encouragement-message"></div>
+  <div id="miss-message">ПРОМАХ!</div>
+  <div id="game-over-overlay">
+    <div id="game-over-text">Игра окончена!</div>
+    <div id="final-score">Счёт: 0</div>
+    <div id="game-over-buttons">
+      <button id="restart-button" class="game-over-button">Начать заново</button>
+      <button id="dictionary-button" class="game-over-button">Посмотреть словарь</button>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="btn-pause"><span class="btn-icon"></span>Пауза</button>
+    <button id="btn-dict"><span class="btn-icon"></span>Словарь</button>
+  </div>
+  <div id="crosshair"></div>
+
+  <audio id="sound-correct" preload="auto"></audio>
+  <audio id="sound-miss" preload="auto"></audio>
+  <audio id="sound-complete" preload="auto"></audio>
+  <audio id="sound-level-up" preload="auto"></audio>
+</div>
+
+<script>
+(() => {
+  const gameArea = document.getElementById('game-area');
+  const wordDisplay = document.getElementById('word-display');
+  const livesContainer = document.getElementById('lives');
+  const scoreDisplay = document.getElementById('score');
+  const levelDisplay = document.getElementById('level');
+  const encouragementMessage = document.getElementById('encouragement-message');
+  const missMessage = document.getElementById('miss-message');
+  const gameOverOverlay = document.getElementById('game-over-overlay');
+  const finalScoreDisplay = document.getElementById('final-score');
+  const restartButton = document.getElementById('restart-button');
+  const dictionaryButton = document.getElementById('dictionary-button');
+  const crosshair = document.getElementById('crosshair');
+  const btnPause = document.getElementById('btn-pause');
+  const btnDict = document.getElementById('btn-dict');
+  
+  const soundCorrect = document.getElementById('sound-correct');
+  const soundMiss = document.getElementById('sound-miss');
+  const soundComplete = document.getElementById('sound-complete');
+  const soundLevelUp = document.getElementById('sound-level-up');
+
+  // Пары гласных: правильная буква -> ложная буква
+  const vowelPairs = {
+    'а': 'о',
+    'о': 'а',
+    'е': 'и',
+    'и': 'е',
+    'у': 'ю',
+    'ю': 'у',
+    'я': 'а',
+    'ё': 'о'
+  };
+
+  // Слова поощрения
+  const encouragementWords = [
+    "Молодец!", "Отлично!", "Круто!", "Супер!", "Великолепно!", 
+    "Превосходно!", "Браво!", "Замечательно!", "Потрясающе!", "Гениально!"
+  ];
+
+  // Массив слов
+const words = [
+    [
+    { word: 'р.д.атор', correct: ['а', 'и'] },
+    { word: 'р.ци.нальный', correct: ['а', 'о'] },
+    { word: 'р.ци.нализировать', correct: ['а', 'о'] },
+    { word: 'р.алист', correct: ['е'] }, // Исправлено: реальный -> реалист
+    { word: 'р.алистичный', correct: ['е'] }, // реальный -> реалистичный
+    { word: 'р.ализм', correct: ['е'] }, // реальный -> реализм
+    { word: 'р.ж.ссёр', correct: ['е', 'и'] },
+    { word: 'р.ж.ссёрский', correct: ['е', 'и'] },
+    { word: 'р.з.дент', correct: ['е', 'и'] },
+    { word: 'р.з.денция', correct: ['е', 'и'] },
+    { word: 'р.месло', correct: ['е'] }, // ремесло
+    { word: 'р.месленный', correct: ['е'] }, // ремесленный
+    { word: 'р.ст.врация', correct: ['е', 'а'] }, // реставрация
+    { word: 'р.ст.врационный', correct: ['е', 'а'] }, // реставрационный
+    { word: 'р.ф.рат', correct: ['е', 'е'] }, // реферат
+    { word: 'р.ф.рировать', correct: ['е', 'е'] }, // реферировать
+    { word: 'р.форма', correct: ['е'] }, // реформа
+    { word: 'р.форматор', correct: ['е'] }, // реформатор
+    { word: 'р.формировать', correct: ['е'] }, // реформировать
+    { word: 'р.цензия', correct: ['е'] }, // рецензия
+    { word: 'р.цензент', correct: ['е'] }, // рецензент
+    { word: 'р.цензировать', correct: ['е'] }, // рецензировать
+    { word: 'р.торика', correct: ['и'] }, // риторика
+    { word: 'р.торический', correct: ['и'] }, // риторический
+    { word: 'р.весники', correct: ['о'] }, // ровесники
+    { word: 'р.мантичный', correct: ['о'] }, // романтичный
+    { word: 'р.мантический', correct: ['о'] }, // романтический
+    { word: 'р.мантизм', correct: ['о'] } // романтизм
+];
+  let currentWordIndex = 0;
+  let currentInserts = [];
+  let lives = 3;
+  let score = 0;
+  let level = 1;
+  let paused = false;
+  let flies = [];
+  let lastActionTime = Date.now();
+  let hintTimeout = null;
+  let completedWords = new Set();
+  let failedWords = new Set();
+  let currentLevelWords = [];
+
+  const maxFliesMobile = 5;
+  const HINT_DELAY = 8000;
+  const BASE_FLY_SPEED = 1.5;
+  const LEVEL_SPEED_MULTIPLIER = 1.3;
+  const CORRECT_FLY_RATIO = 0.6;
+  const LETTER_OFFSET = 20;
+
+  function isMobile() {
+    return /Mobi|Android/i.test(navigator.userAgent);
+  }
+
+  function getCurrentFlySpeed() {
+    return BASE_FLY_SPEED * Math.pow(LEVEL_SPEED_MULTIPLIER, level - 1);
+  }
+
+  function shuffleWords() {
+    currentLevelWords = [...words];
+    for (let i = currentLevelWords.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [currentLevelWords[i], currentLevelWords[j]] = [currentLevelWords[j], currentLevelWords[i]];
+    }
+  }
+
+  function getCurrentWord() {
+    return currentLevelWords[currentWordIndex];
+  }
+
+  function renderLives() {
+    livesContainer.innerHTML = '';
+    for(let i=0; i<lives; i++) {
+      const life = document.createElement('div');
+      life.className = 'life';
+      livesContainer.appendChild(life);
+    }
+  }
+
+  function renderScore() {
+    scoreDisplay.textContent = score;
+  }
+
+  function renderLevel() {
+    levelDisplay.textContent = `Уровень: ${level}`;
+  }
+
+  // АНИМАЦИЯ ПЕРЕХОДА НА НОВЫЙ УРОВЕНЬ
+  function showLevelUpAnimation() {
+    // Воспроизводим звук
+    try { 
+      soundLevelUp.currentTime = 0; 
+      soundLevelUp.play().catch(e => console.log('Audio error:', e));
+    } catch(e) {}
+
+    // 1. Фейерверк из букв
+    const colors = ['#FF6B00', '#4CAF50', '#2196F3', '#9C27B0', '#FFEB3B'];
+    const letters = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+    
+    for (let i = 0; i < 25; i++) {
+      setTimeout(() => {
+        const particle = document.createElement('div');
+        const letter = letters[Math.floor(Math.random() * letters.length)];
+        particle.textContent = letter;
+        particle.style.cssText = `
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          font-size: ${20 + Math.random() * 30}px;
+          font-weight: bold;
+          color: ${colors[Math.floor(Math.random() * colors.length)]};
+          text-shadow: 2px 2px 0 #000;
+          pointer-events: none;
+          z-index: 1800;
+          transform: translate(-50%, -50%);
+          animation: fireworkParticle 1.5s ease-out forwards;
+        `;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 100 + Math.random() * 200;
+        particle.style.setProperty('--end-x', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--end-y', `${Math.sin(angle) * distance}px`);
+        
+        gameArea.appendChild(particle);
+        
+        setTimeout(() => {
+          if (particle.parentNode) particle.parentNode.removeChild(particle);
+        }, 1500);
+      }, i * 60);
+    }
+
+    // 2. Конфетти
+    for (let i = 0; i < 50; i++) {
+      setTimeout(() => {
+        const confetti = document.createElement('div');
+        confetti.style.cssText = `
+          position: absolute;
+          top: -20px;
+          left: ${Math.random() * 100}%;
+          width: 15px;
+          height: 15px;
+          background: ${colors[Math.floor(Math.random() * colors.length)]};
+          border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+          pointer-events: none;
+          z-index: 1700;
+          animation: confettiFall ${1 + Math.random() * 2}s linear forwards;
+        `;
+        gameArea.appendChild(confetti);
+        
+        setTimeout(() => {
+          if (confetti.parentNode) confetti.parentNode.removeChild(confetti);
+        }, 3000);
+      }, i * 40);
+    }
+
+    // 3. Большая надпись уровня
+    setTimeout(() => {
+      const levelUpDiv = document.createElement('div');
+      levelUpDiv.innerHTML = `
+        <div style="font-size: 8vw; font-weight: bold; color: #FF6B00; text-shadow: 4px 4px 0 #000, 8px 8px 0 rgba(0,0,0,0.3);">
+          УРОВЕНЬ ${level}!
+        </div>
+        <div style="font-size: 3vw; margin-top: 30px; color: white; text-shadow: 2px 2px 0 #000;">
+          ✨ Мухи стали быстрее! ×${LEVEL_SPEED_MULTIPLIER.toFixed(1)} ✨
+        </div>
+      `;
+      levelUpDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 2500;
+        animation: levelUpEnter 0.8s ease-out;
+      `;
+      
+      document.body.appendChild(levelUpDiv);
+      
+      setTimeout(() => {
+        levelUpDiv.style.animation = 'levelUpExit 0.8s ease-in forwards';
+        setTimeout(() => {
+          if (levelUpDiv.parentNode) levelUpDiv.parentNode.removeChild(levelUpDiv);
+        }, 800);
+      }, 2500);
+    }, 500);
+  }
+
+  function insertLetters(word, letters) {
+    let result = '';
+    let letterIndex = 0;
+    for (let i=0; i<word.length; i++) {
+      if(word[i] === '.') {
+        if (letters[letterIndex]) {
+          result += `<span class="highlighted_letter highlight-anim">${letters[letterIndex]}</span>`;
+        } else {
+          result += '_';
+        }
+        letterIndex++;
+      } else {
+        result += word[i];
+      }
+    }
+    return result;
+  }
+
+  function getCompletedWord(wordObj, inserts) {
+    let result = '';
+    let letterIndex = 0;
+    for (let i=0; i<wordObj.word.length; i++) {
+      if(wordObj.word[i] === '.') {
+        result += `<span class="highlighted_letter">${inserts[letterIndex]}</span>`;
+        letterIndex++;
+      } else {
+        result += wordObj.word[i];
+      }
+    }
+    return result;
+  }
+  
+  function updateWordDisplay() {
+    const wordObj = getCurrentWord();
+    const displayed = insertLetters(wordObj.word, currentInserts);
+    wordDisplay.innerHTML = displayed;
+    
+    const highlightedLetters = wordDisplay.querySelectorAll('.highlighted_letter');
+    if (highlightedLetters.length > 0) {
+      const lastLetter = highlightedLetters[highlightedLetters.length - 1];
+      lastLetter.classList.add('highlight-anim');
+      setTimeout(() => lastLetter.classList.remove('highlight-anim'), 400);
+    }
+  }
+
+  function clearFlies() {
+    for(const f of flies) {
+      if(f.element.parentNode) {
+        f.element.parentNode.removeChild(f.element);
+      }
+    }
+    flies = [];
+    if (hintTimeout) {
+      clearTimeout(hintTimeout);
+      hintTimeout = null;
+    }
+  }
+
+  function spawnFlies() {
+    clearFlies();
+    const wordObj = getCurrentWord();
+    const maxFlies = isMobile() ? maxFliesMobile : Math.max(8, wordObj.correct.length * 3);
+    
+    const correctLettersNeeded = wordObj.correct.filter((letter, index) => !currentInserts[index]);
+    
+    // Создаем верные мухи для каждой нужной буквы
+    correctLettersNeeded.forEach(letter => {
+      const correctFliesCount = Math.max(1, Math.floor(maxFlies * CORRECT_FLY_RATIO / correctLettersNeeded.length));
+      
+      for(let i = 0; i < correctFliesCount; i++) {
+        createFly(letter, true);
+      }
+    });
+    
+    // Создаем неверные мухи
+    const remainingFlies = maxFlies - document.querySelectorAll('.fly').length;
+    for(let i = 0; i < remainingFlies; i++) {
+      const randomCorrect = wordObj.correct[Math.floor(Math.random() * wordObj.correct.length)];
+      const falseLetter = vowelPairs[randomCorrect] || 'а';
+      createFly(falseLetter, false);
+    }
+    
+    // Если верных мух получилось слишком мало, добавляем еще
+    const currentCorrectFlies = Array.from(document.querySelectorAll('.fly'))
+      .filter(fly => fly.dataset.correct === '1').length;
+    
+    if (currentCorrectFlies < 2 && correctLettersNeeded.length > 0) {
+      const neededLetter = correctLettersNeeded[0];
+      const additionalFlies = 2 - currentCorrectFlies;
+      for(let i = 0; i < additionalFlies; i++) {
+        createFly(neededLetter, true);
+      }
+    }
+    
+    lastActionTime = Date.now();
+    startHintTimer();
+  }
+
+  function createFly(letter, isCorrect) {
+    const fly = document.createElement('div');
+    fly.className = 'fly';
+    const x = Math.random() * (gameArea.clientWidth - 60);
+    const y = Math.random() * (gameArea.clientHeight - 60);
+    fly.style.left = `${x}px`;
+    fly.style.top = `${y}px`;
+    fly.dataset.correct = isCorrect ? '1' : '0';
+    fly.dataset.letter = letter;
+    
+    // Создаем отдельный элемент для буквы и смещаем его вниз
+    const letterElement = document.createElement('div');
+    letterElement.textContent = letter;
+    letterElement.style.cssText = `
+      position: relative;
+      top: ${LETTER_OFFSET}px;
+      font-weight: bold;
+      font-size: 36px;
+      color: black;
+      text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
+    `;
+    
+    fly.appendChild(letterElement);
+    
+    fly.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(paused) return;
+      
+      lastActionTime = Date.now();
+      resetHint();
+      
+      if(fly.dataset.correct === '1') {
+        onCorrectLetter(letter);
+        try { soundCorrect.play(); } catch(e) {}
+      } else {
+        onMiss();
+        try { soundMiss.play(); } catch(e) {}
+      }
+    });
+    
+    gameArea.appendChild(fly);
+    
+    const speed = getCurrentFlySpeed() + Math.random() * getCurrentFlySpeed();
+    const angle = Math.random() * Math.PI * 2;
+    flies.push({
+      element: fly, 
+      x, y, 
+      speedX: Math.cos(angle) * speed, 
+      speedY: Math.sin(angle) * speed
+    });
+  }
+
+  function startHintTimer() {
+    if (hintTimeout) clearTimeout(hintTimeout);
+    hintTimeout = setTimeout(showHint, HINT_DELAY);
+  }
+
+  function resetHint() {
+    if (hintTimeout) {
+      clearTimeout(hintTimeout);
+      hintTimeout = null;
+    }
+    flies.forEach(fly => {
+      fly.element.classList.remove('hint');
+    });
+  }
+
+  function showHint() {
+    const wordObj = getCurrentWord();
+    const nextCorrectIndex = currentInserts.length;
+    if (nextCorrectIndex >= wordObj.correct.length) return;
+    
+    const neededLetter = wordObj.correct[nextCorrectIndex];
+    
+    flies.forEach(fly => {
+      if (fly.dataset.letter === neededLetter && fly.dataset.correct === '1') {
+        fly.element.classList.add('hint');
+      }
+    });
+    
+    hintTimeout = setTimeout(() => {
+      resetHint();
+      startHintTimer();
+    }, 3000);
+  }
+
+  function showEncouragement() {
+    const randomWord = encouragementWords[Math.floor(Math.random() * encouragementWords.length)];
+    encouragementMessage.textContent = randomWord;
+    encouragementMessage.style.opacity = '1';
+    encouragementMessage.style.animation = 'none';
+    setTimeout(() => {
+      encouragementMessage.style.animation = 'encouragementPulse 1.5s ease-in-out';
+    }, 10);
+    
+    setTimeout(() => {
+      encouragementMessage.style.opacity = '0';
+    }, 2000);
+  }
+
+  function onCorrectLetter(letter) {
+    const wordObj = getCurrentWord();
+    if(currentInserts.length < wordObj.correct.length) {
+      currentInserts.push(letter);
+      score += 10;
+      renderScore();
+      updateWordDisplay();
+      
+      // Убираем только ту муху, по которой попали
+      for(let i = 0; i < flies.length; i++) {
+        if(flies[i].element === document.activeElement.parentElement) {
+          if(flies[i].element.parentNode) {
+            flies[i].element.parentNode.removeChild(flies[i].element);
+          }
+          flies.splice(i, 1);
+          break;
+        }
+      }
+    }
+    
+    if(currentInserts.length === wordObj.correct.length) {
+      const originalIndex = words.findIndex(w => w.word === wordObj.word);
+      completedWords.add(originalIndex);
+      try { soundComplete.play(); } catch(e) {}
+      
+      showEncouragement();
+      
+      // УМЕНЬШЕННАЯ АНИМАЦИЯ ДЛЯ ПРАВИЛЬНОГО ОТВЕТА
+      wordDisplay.style.transition = 'all 0.3s ease';
+      wordDisplay.style.transform = 'translateX(-50%) scale(1.1)';
+      wordDisplay.style.color = '#006400';
+      
+      setTimeout(() => {
+        wordDisplay.style.transform = 'translateX(-50%) scale(1)';
+        wordDisplay.style.color = 'black';
+        
+        setTimeout(() => {
+          nextWord();
+        }, 1000); // Уменьшено с 1500 до 1000
+      }, 500); // Уменьшено с 1000 до 500
+    } else {
+      spawnFlies();
+    }
+  }
+
+  function onMiss() {
+    lives--;
+    renderLives();
+    showMissMessage();
+    
+    // Добавляем слово в список слов с промахами
+    const wordObj = getCurrentWord();
+    const originalIndex = words.findIndex(w => w.word === wordObj.word);
+    failedWords.add(originalIndex);
+    
+    if(lives <= 0) {
+      showGameOver();
+    } else {
+      spawnFlies();
+    }
+  }
+
+  function showMissMessage() {
+    missMessage.style.opacity = '1';
+    setTimeout(() => {
+      missMessage.style.opacity = '0';
+    }, 1500);
+  }
+
+  function showGameOver() {
+    finalScoreDisplay.textContent = `Счёт: ${score}`;
+    gameOverOverlay.style.display = 'flex';
+  }
+
+  function resetGame() {
+    currentWordIndex = 0;
+    currentInserts = [];
+    lives = 3;
+    score = 0;
+    level = 1;
+    completedWords.clear();
+    failedWords.clear();
+    shuffleWords();
+    renderLives();
+    renderScore();
+    renderLevel();
+    updateWordDisplay();
+    spawnFlies();
+    gameOverOverlay.style.display = 'none';
+  }
+
+  function nextWord() {
+    currentWordIndex++;
+    if(currentWordIndex >= currentLevelWords.length) {
+      // Все слова текущего уровня пройдены
+      
+      // Добавляем слова с промахами обратно в следующий уровень
+      const wordsForNextLevel = [...words];
+      if (failedWords.size > 0) {
+        const failedWordsArray = Array.from(failedWords);
+        failedWordsArray.forEach(index => {
+          if (!wordsForNextLevel.includes(words[index])) {
+            wordsForNextLevel.push(words[index]);
+          }
+        });
+        failedWords.clear();
+      }
+      
+      level++;
+      currentWordIndex = 0;
+      currentLevelWords = [...wordsForNextLevel];
+      
+      // Перемешиваем слова для нового уровня
+      for (let i = currentLevelWords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentLevelWords[i], currentLevelWords[j]] = [currentLevelWords[j], currentLevelWords[i]];
+      }
+      
+      renderLevel();
+      
+      // ЗАМЕНА alert НА КРАСИВУЮ АНИМАЦИЮ
+      showLevelUpAnimation();
+      
+      // Ждем завершения анимации перед продолжением
+      setTimeout(() => {
+        currentInserts = [];
+        updateWordDisplay();
+        spawnFlies();
+      }, 3500);
+      
+    } else {
+      currentInserts = [];
+      updateWordDisplay();
+      spawnFlies();
+    }
+  }
+
+  function showDictionary() {
+    let dictText = "<div style='text-align: center; font-size: 20px; margin-bottom: 20px; font-weight: bold;'>Словарь изученных слов</div>";
+    let hasWords = false;
+    
+    // Собираем все изученные слова (из completedWords)
+    const allLearnedWords = Array.from(completedWords).map(index => ({
+      wordObj: words[index],
+      isCompleted: true
+    }));
+    
+    // Добавляем слова с промахами (если есть)
+    if (failedWords.size > 0) {
+      Array.from(failedWords).forEach(index => {
+        if (!completedWords.has(index)) {
+          allLearnedWords.push({
+            wordObj: words[index],
+            isCompleted: false
+          });
+        }
+      });
+    }
+    
+    if (allLearnedWords.length > 0) {
+      hasWords = true;
+      
+      // Группируем слова по статусу
+      const completedWordsList = allLearnedWords.filter(item => item.isCompleted);
+      const failedWordsList = allLearnedWords.filter(item => !item.isCompleted);
+      
+      if (completedWordsList.length > 0) {
+        dictText += "<div style='margin-bottom: 15px;'><div style='color: #006400; font-weight: bold; margin-bottom: 10px;'>✓ Успешно изученные слова:</div>";
+        completedWordsList.forEach(item => {
+          const completedWordHTML = getCompletedWord(item.wordObj, item.wordObj.correct);
+          dictText += `<div style='margin: 5px 0; font-size: 16px; padding: 5px; background: #f0f8f0; border-radius: 5px;'>${completedWordHTML}</div>`;
+        });
+        dictText += "</div>";
+      }
+      
+      if (failedWordsList.length > 0) {
+        dictText += "<div style='margin-bottom: 15px;'><div style='color: #FF6B00; font-weight: bold; margin-bottom: 10px;'>⚠ Слова для повторения (были промахи):</div>";
+        failedWordsList.forEach(item => {
+          const wordWithDots = item.wordObj.word;
+          dictText += `<div style='margin: 5px 0; font-size: 16px; padding: 5px; background: #fff8f0; border-radius: 5px;'>${wordWithDots}</div>`;
+        });
+        dictText += "</div>";
+      }
+    }
+    
+    if (!hasWords) {
+      dictText += "<div style='color: #666; font-style: italic; text-align: center;'>Пока нет изученных слов</div>";
+    }
+    
+    // Создаем красивое модальное окно
+    const dictModal = document.createElement('div');
+    dictModal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.8); display: flex; justify-content: center;
+      align-items: center; z-index: 3000; font-family: Arial, sans-serif;
+    `;
+    
+    const dictContent = document.createElement('div');
+    dictContent.style.cssText = `
+      background: white; padding: 30px; border-radius: 15px; max-width: 600px;
+      max-height: 80vh; overflow-y: auto; text-align: left; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    `;
+    
+    dictContent.innerHTML = dictText;
+    
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Закрыть';
+    closeButton.style.cssText = `
+      margin-top: 20px; padding: 10px 20px; background: #a56a00; color: white;
+      border: none; border-radius: 5px; cursor: pointer; font-size: 16px;
+      display: block; margin-left: auto; margin-right: auto;
+    `;
+    closeButton.onclick = () => document.body.removeChild(dictModal);
+    
+    dictContent.appendChild(closeButton);
+    dictModal.appendChild(dictContent);
+    dictModal.onclick = (e) => {
+      if (e.target === dictModal) document.body.removeChild(dictModal);
+    };
+    
+    document.body.appendChild(dictModal);
+  }
+
+  function updateCrosshair(x, y) {
+    const rect = gameArea.getBoundingClientRect();
+    let cx = x - rect.left - 25;
+    let cy = y - rect.top - 25;
+    
+    cx = Math.max(0, Math.min(cx, rect.width - 50));
+    cy = Math.max(0, Math.min(cy, rect.height - 50));
+    
+    crosshair.style.left = `${cx}px`;
+    crosshair.style.top = `${cy}px`;
+  }
+
+  function moveFlies() {
+    const rect = gameArea.getBoundingClientRect();
+    
+    for(let fly of flies) {
+      fly.x += fly.speedX;
+      fly.y += fly.speedY;
+      
+      if(fly.x <= 0 || fly.x >= rect.width - 60) {
+        fly.speedX *= -1;
+        fly.x = Math.max(0, Math.min(fly.x, rect.width - 60));
+      }
+      if(fly.y <= 0 || fly.y >= rect.height - 60) {
+        fly.speedY *= -1;
+        fly.y = Math.max(0, Math.min(fly.y, rect.height - 60));
+      }
+      
+      fly.element.style.left = `${fly.x}px`;
+      fly.element.style.top = `${fly.y}px`;
+    }
+  }
+
+  function gameLoop() {
+    if(!paused){
+      moveFlies();
+      
+      if (Date.now() - lastActionTime > HINT_DELAY - 1000 && !hintTimeout) {
+        startHintTimer();
+      }
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  function togglePause() {
+    paused = !paused;
+    
+    if (!paused) {
+      lastActionTime = Date.now();
+    }
+  }
+
+  // Event listeners
+  gameArea.addEventListener('mousemove', (e) => {
+    if(!paused) updateCrosshair(e.clientX, e.clientY);
+  });
+  
+  gameArea.addEventListener('touchmove', (e) => {
+    if(!paused && e.touches.length) {
+      updateCrosshair(e.touches[0].clientX, e.touches[0].clientY);
+      e.preventDefault();
+    }
+  }, {passive: false});
+
+  btnPause.addEventListener('click', togglePause);
+  btnDict.addEventListener('click', showDictionary);
+  restartButton.addEventListener('click', resetGame);
+  dictionaryButton.addEventListener('click', showDictionary);
+
+  // Инициализация
+  gameArea.focus();
+  shuffleWords();
+  renderLives();
+  renderScore();
+  renderLevel();
+  updateWordDisplay();
+  spawnFlies();
+  gameLoop();
+
+  window.addEventListener('blur', () => {
+    if (!paused) togglePause();
+  });
+
+})();
+</script>
+
+</body>
+</html>
